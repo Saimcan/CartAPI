@@ -8,3 +8,7 @@
 /var/
 /vendor/
 ###< symfony/framework-bundle ###
+
+###> PHPStorm generated files ###
+/.idea/*
+###< PHPStorm generated files ###
