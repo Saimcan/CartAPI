@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\OrderRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: OrderRepository::class)]
@@ -18,6 +19,12 @@ class Order
     #[ORM\JoinColumn(nullable: false)]
     private ?Customer $customer = null;
 
+    #[ORM\Column]
+    private array $items = [];
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2)]
+    private ?string $total = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -31,6 +38,30 @@ class Order
     public function setCustomer(?Customer $customer): self
     {
         $this->customer = $customer;
+
+        return $this;
+    }
+
+    public function getItems(): array
+    {
+        return $this->items;
+    }
+
+    public function setItems(array $items): self
+    {
+        $this->items = $items;
+
+        return $this;
+    }
+
+    public function getTotal(): ?string
+    {
+        return $this->total;
+    }
+
+    public function setTotal(string $total): self
+    {
+        $this->total = $total;
 
         return $this;
     }
