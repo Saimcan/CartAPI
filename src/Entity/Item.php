@@ -5,6 +5,8 @@ namespace App\Entity;
 use App\Repository\ItemRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Mapping\ClassMetadata;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: ItemRepository::class)]
 class Item
@@ -51,6 +53,15 @@ class Item
 
     public function setQuantity(int $quantity): self
     {
+        //check if stock is available
+        $stock = $this->getProduct()->getStock();
+
+        if($stock < $quantity){
+            throw new \Exception("Not enough stock for ". $this->getProduct()->getName() .". ".
+                "Stock available: ".$stock.". You requested: ".$quantity
+                , 50);
+        }
+
         $this->quantity = $quantity;
 
         return $this;
@@ -78,5 +89,30 @@ class Item
         $this->total = $total;
 
         return $this;
+    }
+
+    public static function loadValidatorMetadata(ClassMetadata $metadata): void
+    {
+        $metadata->addPropertyConstraints('product', [
+            new Assert\NotNull()
+        ]);
+
+        $metadata->addPropertyConstraints('quantity', [
+            new Assert\NotNull(),
+            new Assert\NotBlank(),
+            new Assert\Positive()
+        ]);
+
+        $metadata->addPropertyConstraints('unitPrice', [
+            new Assert\NotNull(),
+            new Assert\NotBlank(),
+            new Assert\Positive()
+        ]);
+
+        $metadata->addPropertyConstraints('total', [
+            new Assert\NotNull(),
+            new Assert\NotBlank(),
+            new Assert\Positive()
+        ]);
     }
 }

@@ -5,6 +5,8 @@ namespace App\Entity;
 use App\Repository\OrderRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Mapping\ClassMetadata;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: OrderRepository::class)]
 #[ORM\Table(name: '`order`')]
@@ -64,5 +66,23 @@ class Order
         $this->total = $total;
 
         return $this;
+    }
+
+    public static function loadValidatorMetadata(ClassMetadata $metadata): void
+    {
+        $metadata->addPropertyConstraints('id', [
+            new Assert\Unique(),
+            new Assert\Positive()
+        ]);
+
+        $metadata->addPropertyConstraints('customer', [
+            new Assert\NotNull(),
+            new Assert\NotBlank()
+        ]);
+
+        $metadata->addPropertyConstraints('total', [
+            new Assert\NotNull(),
+            new Assert\NotBlank()
+        ]);
     }
 }
