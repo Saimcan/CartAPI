@@ -169,31 +169,41 @@ class OrderController extends AbstractAPIController implements APICRUDInterface
         $orderRepository = new OrderRepository($doctrine);
         $order = $orderRepository->find($id);
         if(!$order){
-            return $this->json('No order found for id: ' . $id, 404);
+            //todo: might want to use a factory for returning messages
+            return new JsonResponse(
+                json_encode([
+                    "code" => Response::HTTP_NOT_FOUND,
+                    "message" => 'No order was found for id: '.$id. ".",
+                    "status" => 'error'
+                ]),
+                Response::HTTP_OK,
+                [],
+                true
+            );
         }
 
         $entityManager = $doctrine->getManager();
         $productRepository = new ProductRepository($doctrine);
         $itemRepository = new ItemRepository($doctrine);
 
-        $items = $order->getItems();
+        $itemInstances = $itemRepository->findByOrderPlaced($order);
         /**
          * @var Item $item
          */
-        foreach ($items as $item){
-            //renew product stock data
-            $product = $productRepository->find($item["productId"]);
-            $product->setStock($product->getStock() + $item["quantity"]);
+        foreach ($itemInstances as $item){
+            //change product stock data
+            $product = $productRepository->find($item->getProduct()->getId());
+            $product->setStock($product->getStock() + $item->getQuantity());
             $entityManager->persist($product);
-
-            //remove item
-            $itemRepository->remove($itemRepository->find($item["id"]), true);
         }
-        $entityManager->flush();
 
-        //remove order
+        //remove items
+        $itemRepository->removeByOrderPlaced($order, true);
+        //remove order (orderId is for returning message below)
         $orderId = $order->getId();
         $orderRepository->remove($order, true);
+        //update product stock data
+        $entityManager->flush();
 
         //returning successfully deleted message
         //todo: might want to use a factory for returning messages

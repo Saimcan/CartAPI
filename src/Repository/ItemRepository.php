@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Entity\Item;
+use App\Entity\Order;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -33,6 +34,27 @@ class ItemRepository extends ServiceEntityRepository
     public function remove(Item $entity, bool $flush = false): void
     {
         $this->getEntityManager()->remove($entity);
+
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
+
+    public function findByOrderPlaced(Order $orderPlaced)
+    {
+        return $this->createQueryBuilder('i')
+            ->andWhere('i.orderPlaced = :order_placed')
+            ->setParameter('order_placed', $orderPlaced)
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function removeByOrderPlaced(Order $orderPlaced, bool $flush = false): void
+    {
+        $items = $this->findByOrderPlaced($orderPlaced);
+        foreach ($items as $item){
+            $this->getEntityManager()->remove($item);
+        }
 
         if ($flush) {
             $this->getEntityManager()->flush();

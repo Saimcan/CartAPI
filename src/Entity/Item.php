@@ -20,6 +20,9 @@ class Item
     #[ORM\JoinColumn(nullable: false)]
     private ?Product $product = null;
 
+    #[ORM\ManyToOne]
+    private ?Order $orderPlaced = null;
+
     #[ORM\Column]
     private ?int $quantity = null;
 
@@ -87,6 +90,18 @@ class Item
     public function setTotal(string $total): self
     {
         $this->total = $total;
+
+        return $this;
+    }
+
+    public function getOrderPlaced(): ?Order
+    {
+        return $this->orderPlaced;
+    }
+
+    public function setOrderPlaced(?Order $orderPlaced): self
+    {
+        $this->orderPlaced = $orderPlaced;
 
         return $this;
     }
