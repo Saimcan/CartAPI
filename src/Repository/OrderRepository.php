@@ -40,16 +40,6 @@ class OrderRepository extends ServiceEntityRepository
         }
     }
 
-    /**
-     * @throws Exception
-     */
-    public function getLastRecordId(): int
-    {
-        $conn = $this->getEntityManager()->getConnection();
-        $statement = $conn->prepare('SELECT max(id) FROM "order"');
-        return $statement->executeStatement();
-    }
-
 //    /**
 //     * @return Order[] Returns an array of Order objects
 //     */
