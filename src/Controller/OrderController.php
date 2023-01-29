@@ -88,6 +88,8 @@ class OrderController extends AbstractAPIController implements APICRUDInterface
     public function create(ManagerRegistry $doctrine, Request $request, ValidatorInterface $validator): JsonResponse|Response
     {
         $customerRepository = new CustomerRepository($doctrine);
+        $itemRepository = new ItemRepository($doctrine);
+        $orderRepository = new OrderRepository($doctrine);
         $customer = $customerRepository->find($request->get('customerId'));
         $order = new Order();
         $order->setCustomer($customer);
@@ -140,6 +142,16 @@ class OrderController extends AbstractAPIController implements APICRUDInterface
 
         //insert into db
         $entityManager->persist($order);
+        $entityManager->flush();
+
+        $nonRelatedItems = $itemRepository->getNonOrderedItems();
+        /**
+         * @var Item $nonRelatedItem
+         */
+        foreach ($nonRelatedItems as $nonRelatedItem){
+            $nonRelatedItem->setOrderPlaced($orderRepository->findBy(array(),array('id'=>'DESC'),1,0)[0]);
+            $entityManager->persist($nonRelatedItem);
+        }
         $entityManager->flush();
 
         //returning successfully added message

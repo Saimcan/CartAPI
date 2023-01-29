@@ -61,6 +61,14 @@ class ItemRepository extends ServiceEntityRepository
         }
     }
 
+    public function getNonOrderedItems()
+    {
+        return $this->createQueryBuilder('i')
+            ->andWhere('i.orderPlaced is NULL')
+            ->getQuery()
+            ->getResult();
+    }
+
 //    /**
 //     * @return Item[] Returns an array of Item objects
 //     */
