@@ -40,6 +40,22 @@ class OrderRepository extends ServiceEntityRepository
         }
     }
 
+    public function findAllOrderById(): array
+    {
+        return $this->findBy(array(), array('id' => 'ASC'));
+    }
+
+    public function findAllItemsByOrderId(int $orderId): array
+    {
+        return $this->createQueryBuilder('o')
+                    ->select('o.items')
+                    ->andWhere('o.id = :order_id')
+                    ->setParameter('order_id', $orderId)
+                    ->orderBy('o.id', 'ASC')
+                    ->getQuery()
+                    ->getResult();
+    }
+
 //    /**
 //     * @return Order[] Returns an array of Order objects
 //     */

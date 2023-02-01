@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\ItemRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Mapping\ClassMetadata;
@@ -20,8 +22,8 @@ class Item
     #[ORM\JoinColumn(nullable: false)]
     private ?Product $product = null;
 
-    #[ORM\ManyToOne]
-    private ?Order $orderPlaced = null;
+    #[ORM\OneToMany(mappedBy: 'items', targetEntity: Order::class)]
+    private Collection $orders;
 
     #[ORM\Column]
     private ?int $quantity = null;
@@ -31,6 +33,15 @@ class Item
 
     #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2)]
     private ?string $total = null;
+
+    #[ORM\ManyToMany(targetEntity: Order::class, mappedBy: 'items')]
+    private Collection $ordersPlaced;
+
+    public function __construct()
+    {
+        $this->orders = new ArrayCollection();
+        $this->ordersPlaced = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -94,18 +105,6 @@ class Item
         return $this;
     }
 
-    public function getOrderPlaced(): ?Order
-    {
-        return $this->orderPlaced;
-    }
-
-    public function setOrderPlaced(?Order $orderPlaced): self
-    {
-        $this->orderPlaced = $orderPlaced;
-
-        return $this;
-    }
-
     public static function loadValidatorMetadata(ClassMetadata $metadata): void
     {
         $metadata->addPropertyConstraints('product', [
@@ -129,5 +128,62 @@ class Item
             new Assert\NotBlank(),
             new Assert\Positive()
         ]);
+    }
+
+    /**
+     * @return Collection<int, Order>
+     */
+    public function getOrders(): Collection
+    {
+        return $this->orders;
+    }
+
+    public function addOrder(Order $order): self
+    {
+        if (!$this->orders->contains($order)) {
+            $this->orders->add($order);
+            $order->setItems($this);
+        }
+
+        return $this;
+    }
+
+    public function removeOrder(Order $order): self
+    {
+        if ($this->orders->removeElement($order)) {
+            // set the owning side to null (unless already changed)
+            if ($order->getItems() === $this) {
+                $order->setItems(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Order>
+     */
+    public function getOrdersPlaced(): Collection
+    {
+        return $this->ordersPlaced;
+    }
+
+    public function addOrdersPlaced(Order $ordersPlaced): self
+    {
+        if (!$this->ordersPlaced->contains($ordersPlaced)) {
+            $this->ordersPlaced->add($ordersPlaced);
+            $ordersPlaced->addItem($this);
+        }
+
+        return $this;
+    }
+
+    public function removeOrdersPlaced(Order $ordersPlaced): self
+    {
+        if ($this->ordersPlaced->removeElement($ordersPlaced)) {
+            $ordersPlaced->removeItem($this);
+        }
+
+        return $this;
     }
 }

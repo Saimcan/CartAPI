@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller;
 
+use App\Dto\Response\Transformer\OrderResponseDtoTransformer;
 use App\Entity\Item;
 use App\Entity\Order;
-use App\Repository\CustomerRepository;
 use App\Repository\ItemRepository;
 use App\Repository\OrderRepository;
 use App\Repository\ProductRepository;
@@ -18,76 +20,43 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 #[Route('/api', name: 'api_')]
 class OrderController extends AbstractAPIController implements APICRUDInterface
 {
+    private OrderResponseDtoTransformer $orderResponseDtoTransformer;
+
+    public function __construct(OrderResponseDtoTransformer $orderResponseDtoTransformer)
+    {
+        $this->orderResponseDtoTransformer = $orderResponseDtoTransformer;
+    }
+
     #[Route('/order', name: 'order_list', methods: 'GET')]
     public function list(ManagerRegistry $doctrine): JsonResponse
     {
-        $orderRepository = new OrderRepository($doctrine);
-        $orders = $orderRepository->findAll();
-        $data = [];
-
-        /**
-         * @var $order Order
-         */
-        foreach ($orders as $order){
-            $data[] = [
-                'id' => $order->getId(),
-                'customerId' => $order->getCustomer()->getId(),
-                'items' => $order->getItems(),
-                'total' => $order->getTotal()
-            ];
-        }
-
-        //todo: might want to use a factory for returning messages
-        return new JsonResponse(
-            json_encode([
-                "code" => Response::HTTP_OK,
-                "message" => 'All orders are listed below:',
-                "status" => 'success',
-                "data" => $data
-            ]),
-            Response::HTTP_OK,
-            [],
-            true
-        );
+        $orders = $doctrine->getRepository(Order::class)->findAllOrderById();
+        $dto = $this->orderResponseDtoTransformer->transformFromObjects($orders);
+        return $this->json($dto);
     }
 
     #[Route('/order/{id}', name: 'order_show', methods: 'GET')]
     public function show(int $id, ManagerRegistry $doctrine): JsonResponse
     {
-        $orderRepository = new OrderRepository($doctrine);
-        $order = $orderRepository->find($id);
-        if(!$order){
-            return $this->json('No order found for id: ' . $id, 404);
-        }
-
-        /**
-         * @var $order Order
-         */
-        $data = [
-            'id' => $order->getId(),
-            'customerId' => $order->getCustomer()->getId(),
-            'items' => $order->getItems(),
-            'total' => $order->getTotal()
-        ];
-
-        //todo: might want to use a factory for returning messages
-        return new JsonResponse(
-            json_encode([
-                "code" => Response::HTTP_OK,
-                "message" => 'Order details are shown below:',
-                "status" => 'success',
-                "data" => $data
-            ]),
-            Response::HTTP_OK,
-            [],
-            true
-        );
+        $order = $doctrine->getRepository(Order::class)->find($id);
+        $dto = $this->orderResponseDtoTransformer->transformFromObject($order);
+        return $this->json($dto);
     }
 
     #[Route('/order', name:'order_new', methods: 'POST')]
     public function create(ManagerRegistry $doctrine, Request $request, ValidatorInterface $validator): JsonResponse|Response
     {
-        $customerRepository = new CustomerRepository($doctrine);
+        $form = $this->buildForm(\OrderType::class);
+        if ($request->isMethod('POST')) {
+            $form->handleRequest($request);
+            if(!$form->isSubmitted() || !$form->isValid()){
+                return $this->respond($form, Response::HTTP_BAD_REQUEST);
+            }
+        }
+
+        $a = 1;
+
+        /*$customerRepository = new CustomerRepository($doctrine);
         $itemRepository = new ItemRepository($doctrine);
         $orderRepository = new OrderRepository($doctrine);
         $customer = $customerRepository->find($request->get('customerId'));
@@ -145,9 +114,6 @@ class OrderController extends AbstractAPIController implements APICRUDInterface
         $entityManager->flush();
 
         $nonRelatedItems = $itemRepository->getNonOrderedItems();
-        /**
-         * @var Item $nonRelatedItem
-         */
         foreach ($nonRelatedItems as $nonRelatedItem){
             $nonRelatedItem->setOrderPlaced($orderRepository->findBy(array(),array('id'=>'DESC'),1,0)[0]);
             $entityManager->persist($nonRelatedItem);
@@ -166,7 +132,7 @@ class OrderController extends AbstractAPIController implements APICRUDInterface
             Response::HTTP_OK,
             [],
             true
-        );
+        );*/
     }
 
     #[Route('/order/{id}', name: 'order_update', methods: 'PUT')]

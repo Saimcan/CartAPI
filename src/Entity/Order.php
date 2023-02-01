@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\OrderRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Mapping\ClassMetadata;
@@ -21,11 +23,16 @@ class Order
     #[ORM\JoinColumn(nullable: false)]
     private ?Customer $customer = null;
 
-    #[ORM\Column]
-    private array $items = [];
-
     #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2)]
     private ?string $total = null;
+
+    #[ORM\ManyToMany(targetEntity: Item::class, inversedBy: 'ordersPlaced')]
+    private Collection $items;
+
+    public function __construct()
+    {
+        $this->items = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -40,18 +47,6 @@ class Order
     public function setCustomer(?Customer $customer): self
     {
         $this->customer = $customer;
-
-        return $this;
-    }
-
-    public function getItems(): array
-    {
-        return $this->items;
-    }
-
-    public function setItems(array $items): self
-    {
-        $this->items = $items;
 
         return $this;
     }
@@ -84,5 +79,29 @@ class Order
             new Assert\NotNull(),
             new Assert\NotBlank()
         ]);
+    }
+
+    /**
+     * @return Collection<int, Item>
+     */
+    public function getItems(): Collection
+    {
+        return $this->items;
+    }
+
+    public function addItem(Item $item): self
+    {
+        if (!$this->items->contains($item)) {
+            $this->items->add($item);
+        }
+
+        return $this;
+    }
+
+    public function removeItem(Item $item): self
+    {
+        $this->items->removeElement($item);
+
+        return $this;
     }
 }
