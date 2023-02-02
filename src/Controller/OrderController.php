@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Dto\Request\Model\ItemModel;
 use App\Dto\Response\Transformer\OrderResponseDtoTransformer;
 use App\Entity\Item;
 use App\Entity\Order;
+use App\Repository\CustomerRepository;
 use App\Repository\ItemRepository;
 use App\Repository\OrderRepository;
 use App\Repository\ProductRepository;
@@ -43,81 +45,50 @@ class OrderController extends AbstractAPIController implements APICRUDInterface
         return $this->json($dto);
     }
 
+    /**
+     * @throws \Exception
+     */
     #[Route('/order', name:'order_new', methods: 'POST')]
-    public function create(ManagerRegistry $doctrine, Request $request, ValidatorInterface $validator): JsonResponse|Response
+    public function create(ManagerRegistry $doctrine, Request $request): JsonResponse|Response
     {
+        //validation check
         $form = $this->buildForm(\OrderType::class);
         if ($request->isMethod('POST')) {
             $form->handleRequest($request);
             if(!$form->isSubmitted() || !$form->isValid()){
                 return $this->respond($form, Response::HTTP_BAD_REQUEST);
             }
+        }else{
+            return $this->json(null, Response::HTTP_BAD_REQUEST);
         }
 
-        $a = 1;
-
-        /*$customerRepository = new CustomerRepository($doctrine);
-        $itemRepository = new ItemRepository($doctrine);
-        $orderRepository = new OrderRepository($doctrine);
-        $customer = $customerRepository->find($request->get('customerId'));
-        $order = new Order();
-        $order->setCustomer($customer);
-        $order->setItems($request->get('items'));
-
-        $entityManager = $doctrine->getManager();
+        $orderModel = $form->getData();
         $productRepository = new ProductRepository($doctrine);
-        $itemValidationErrorMessages = [];
-        $allValidationErrorMessages = [];
-        $totalPrice = 0;
+        $customerRepository = new CustomerRepository($doctrine);
+        $entityManager = $doctrine->getManager();
 
-        foreach ($order->getItems() as $item){
+        $orderInstance = new Order();
+        $orderInstance->setCustomer($customerRepository->find($orderModel->id));
+
+        //add items
+        /**
+         * @var ItemModel $item
+         */
+        foreach ($orderModel->items as $item){
             $itemInstance = new Item();
-            $product = $productRepository->find($item["productId"]);
-            $itemInstance->setProduct($product)
-                ->setQuantity($item["quantity"])
-                ->setUnitPrice($product->getPrice())
-                ->setTotal($product->getPrice() * $itemInstance->getQuantity());
-            $totalPrice += floatval($product->getPrice());
+            $itemInstance->setProduct($productRepository->find($item->productId))
+                        ->setQuantity($item->quantity)
+                        ->setUnitPrice($item->unitPrice)
+                        ->setTotal($item->total);
 
-            //item validation (works for current one, bypasses previous ones), might want to refactor
-            $itemValidationErrorMessages = $validator->validate($itemInstance);
-
-            //update stock and persist data
-            $product->setStock($product->getStock() - $itemInstance->getQuantity());
-            $entityManager->persist($product);
             $entityManager->persist($itemInstance);
+            $orderInstance->addItem($itemInstance);
+            $orderInstance->setTotal(
+                $orderInstance->calculateTotalPrice($itemInstance->getQuantity(), $itemInstance->getUnitPrice())
+            );
         }
 
-        $order->setTotal((string)$totalPrice);
-
-        //handling error messages
-        //order
-        $orderValidationErrorMessages = $validator->validate($order);
-        if(count($orderValidationErrorMessages) > 0){
-            foreach ($orderValidationErrorMessages as $errorMessage){
-                $allValidationErrorMessages[] = $errorMessage->getMessage()." : ".$errorMessage->getPropertyPath();
-            }
-        }
-        //item
-        if(count($itemValidationErrorMessages) > 0){
-            foreach ($itemValidationErrorMessages as $errorMessage){
-                $allValidationErrorMessages[] = $errorMessage->getMessage()." : ".$errorMessage->getPropertyPath();
-            }
-        }
-        //all validation error messages check
-        if(count($allValidationErrorMessages) > 0){
-            return $this->response($allValidationErrorMessages, Response::HTTP_BAD_REQUEST);
-        }
-
-        //insert into db
-        $entityManager->persist($order);
-        $entityManager->flush();
-
-        $nonRelatedItems = $itemRepository->getNonOrderedItems();
-        foreach ($nonRelatedItems as $nonRelatedItem){
-            $nonRelatedItem->setOrderPlaced($orderRepository->findBy(array(),array('id'=>'DESC'),1,0)[0]);
-            $entityManager->persist($nonRelatedItem);
-        }
+        $entityManager->persist($orderInstance);
         $entityManager->flush();
 
         //returning successfully added message
@@ -125,18 +96,17 @@ class OrderController extends AbstractAPIController implements APICRUDInterface
         return new JsonResponse(
             json_encode([
                 "code" => Response::HTTP_OK,
-                "message" => 'Created a new order successfully for '.$order->getCustomer()->getName(). ".",
-                "status" => 'success',
-                "data" => $order->getItems()
+                "message" => 'Created a new order successfully for '.$orderInstance->getCustomer()->getName(). ".",
+                "status" => 'success'
             ]),
             Response::HTTP_OK,
             [],
             true
-        );*/
+        );
     }
 
     #[Route('/order/{id}', name: 'order_update', methods: 'PUT')]
-    public function update(int $id, ManagerRegistry $doctrine, Request $request, ValidatorInterface $validator)
+    public function update(int $id, ManagerRegistry $doctrine, Request $request)
     {
         // TODO: Implement update() method.
     }

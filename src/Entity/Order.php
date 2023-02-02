@@ -58,7 +58,11 @@ class Order
 
     public function setTotal(string $total): self
     {
-        $this->total = $total;
+        if(isset($this->total)){
+            $this->total += round(number_format((float)$total, 2, '.', ''), 2);
+        }else{
+            $this->total = $total;
+        }
 
         return $this;
     }
@@ -103,5 +107,10 @@ class Order
         $this->items->removeElement($item);
 
         return $this;
+    }
+
+    public function calculateTotalPrice(int $quantity, string $unitPrice): string
+    {
+        return number_format($unitPrice * $quantity, 2);
     }
 }
