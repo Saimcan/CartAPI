@@ -40,27 +40,6 @@ class ItemRepository extends ServiceEntityRepository
         }
     }
 
-    public function findByOrderPlaced(Order $orderPlaced)
-    {
-        return $this->createQueryBuilder('i')
-            ->andWhere('i.orderPlaced = :order_placed')
-            ->setParameter('order_placed', $orderPlaced)
-            ->getQuery()
-            ->getResult();
-    }
-
-    public function removeByOrderPlaced(Order $orderPlaced, bool $flush = false): void
-    {
-        $items = $this->findByOrderPlaced($orderPlaced);
-        foreach ($items as $item){
-            $this->getEntityManager()->remove($item);
-        }
-
-        if ($flush) {
-            $this->getEntityManager()->flush();
-        }
-    }
-
 //    /**
 //     * @return Item[] Returns an array of Item objects
 //     */

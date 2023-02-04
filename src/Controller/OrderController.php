@@ -9,7 +9,6 @@ use App\Dto\Response\Transformer\OrderResponseDtoTransformer;
 use App\Entity\Item;
 use App\Entity\Order;
 use App\Repository\CustomerRepository;
-use App\Repository\ItemRepository;
 use App\Repository\OrderRepository;
 use App\Repository\ProductRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -17,7 +16,6 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[Route('/api', name: 'api_')]
 class OrderController extends AbstractAPIController implements APICRUDInterface
@@ -76,12 +74,33 @@ class OrderController extends AbstractAPIController implements APICRUDInterface
          */
         foreach ($orderModel->items as $item){
             $itemInstance = new Item();
-            $itemInstance->setProduct($productRepository->find($item->productId))
+            $productInstance = $productRepository->find($item->productId);
+
+            //check stock
+            if(!$productInstance->isStockAvailable($item->quantity)){
+                //todo: might want to use a factory for returning messages
+                return new JsonResponse(
+                    json_encode([
+                        "code" => Response::HTTP_NOT_FOUND,
+                        "message" => 'Not enough stock for '. $productInstance->getName() .'. '.
+                            'Stock available: '.$productInstance->getStock().'. You requested: '.$item->quantity,
+                        "status" => 'error'
+                    ]),
+                    Response::HTTP_OK,
+                    [],
+                    true
+                );
+            }
+
+            $itemInstance->setProduct($productInstance)
                         ->setQuantity($item->quantity)
                         ->setUnitPrice($item->unitPrice)
                         ->setTotal($item->total);
 
+            $productInstance->setStock($productInstance->getStock() - $item->quantity);
+
             $entityManager->persist($itemInstance);
+            $entityManager->persist($productInstance);
             $orderInstance->addItem($itemInstance);
             $orderInstance->setTotal(
                 $orderInstance->calculateTotalPrice($itemInstance->getQuantity(), $itemInstance->getUnitPrice())
@@ -132,9 +151,8 @@ class OrderController extends AbstractAPIController implements APICRUDInterface
 
         $entityManager = $doctrine->getManager();
         $productRepository = new ProductRepository($doctrine);
-        $itemRepository = new ItemRepository($doctrine);
 
-        $itemInstances = $itemRepository->findByOrderPlaced($order);
+        $itemInstances = $order->getItems();
         /**
          * @var Item $item
          */
@@ -142,15 +160,15 @@ class OrderController extends AbstractAPIController implements APICRUDInterface
             //change product stock data
             $product = $productRepository->find($item->getProduct()->getId());
             $product->setStock($product->getStock() + $item->getQuantity());
+            $order->removeItem($item);
+
             $entityManager->persist($product);
+            $entityManager->persist($order);
         }
 
-        //remove items
-        $itemRepository->removeByOrderPlaced($order, true);
         //remove order (orderId is for returning message below)
         $orderId = $order->getId();
         $orderRepository->remove($order, true);
-        //update product stock data
         $entityManager->flush();
 
         //returning successfully deleted message
@@ -158,7 +176,7 @@ class OrderController extends AbstractAPIController implements APICRUDInterface
         return new JsonResponse(
             json_encode([
                 "code" => Response::HTTP_OK,
-                "message" => 'Removed an order successfully with id :'.$orderId. ".",
+                "message" => 'Removed an order successfully with id: '.$orderId. ".",
                 "status" => 'success'
             ]),
             Response::HTTP_OK,

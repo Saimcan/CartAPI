@@ -7,8 +7,6 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Validator\Mapping\ClassMetadata;
-use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: ItemRepository::class)]
 class Item
@@ -71,6 +69,7 @@ class Item
         $stock = $this->getProduct()->getStock();
 
         if($stock < $quantity){
+            //todo: replace with an exception type so that it will be handled on controller
             throw new \Exception("Not enough stock for ". $this->getProduct()->getName() .". ".
                 "Stock available: ".$stock.". You requested: ".$quantity
                 , 50);
@@ -105,59 +104,12 @@ class Item
         return $this;
     }
 
-    public static function loadValidatorMetadata(ClassMetadata $metadata): void
-    {
-        $metadata->addPropertyConstraints('product', [
-            new Assert\NotNull()
-        ]);
-
-        $metadata->addPropertyConstraints('quantity', [
-            new Assert\NotNull(),
-            new Assert\NotBlank(),
-            new Assert\Positive()
-        ]);
-
-        $metadata->addPropertyConstraints('unitPrice', [
-            new Assert\NotNull(),
-            new Assert\NotBlank(),
-            new Assert\Positive()
-        ]);
-
-        $metadata->addPropertyConstraints('total', [
-            new Assert\NotNull(),
-            new Assert\NotBlank(),
-            new Assert\Positive()
-        ]);
-    }
-
     /**
      * @return Collection<int, Order>
      */
     public function getOrders(): Collection
     {
         return $this->orders;
-    }
-
-    public function addOrder(Order $order): self
-    {
-        if (!$this->orders->contains($order)) {
-            $this->orders->add($order);
-            $order->setItems($this);
-        }
-
-        return $this;
-    }
-
-    public function removeOrder(Order $order): self
-    {
-        if ($this->orders->removeElement($order)) {
-            // set the owning side to null (unless already changed)
-            if ($order->getItems() === $this) {
-                $order->setItems(null);
-            }
-        }
-
-        return $this;
     }
 
     /**

@@ -79,4 +79,17 @@ class Product
 
         return $this;
     }
+
+    /**
+     * @param int $requestedQuantity
+     * @return bool
+     */
+    public function isStockAvailable(int $requestedQuantity): bool
+    {
+        if($this->stock >= $requestedQuantity){
+            return true;
+        }else{
+            return false;
+        }
+    }
 }
